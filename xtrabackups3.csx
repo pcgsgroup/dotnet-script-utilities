@@ -67,6 +67,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
     try{
     //Create backup directory if it doesn't exist
     if(!Directory.Exists(o.BackupDirectory)){
+        Log($"Creating {o.BackupDirectory}");
         Directory.CreateDirectory(o.BackupDirectory);
     }
 
@@ -76,6 +77,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
     //Check if incremental backup path exists
     var incrementalBackupPath = Path.Combine(o.BackupDirectory, "inc");
     if(!Directory.Exists(incrementalBackupPath)){
+        Log($"Creating {incrementalBackupPath} directory");
         Directory.CreateDirectory(incrementalBackupPath);
     }
 
@@ -86,7 +88,9 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
 
     //Check if the full backup needs to be cleaned
     if(Directory.Exists(fullBackupPath) && (o.IncrementalBackupNumber == 0 || incrementalBackupCount >= o.IncrementalBackupNumber)){
-        Directory.Delete(fullBackupPath, true);
+        Log($"Cleaning {o.BackupDirectory} directory");
+        Directory.Delete(o.BackupDirectory, true);
+        Directory.CreateDirectory(o.BackupDirectory);
         incrementalBackupCount = 0;
     }
 
@@ -98,6 +102,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         Directory.CreateDirectory(fullBackupPath);
         var news3Name = $"{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}full";
         var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
+        Log($"Creating a full backup {fullBackupPath} and storing it at {s3folder}");
         Bash($"xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={fullBackupPath} --target-dir={fullBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
 
         //Notify
@@ -114,6 +119,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
             Directory.CreateDirectory(nextIncrementalBackupPath);
             var news3Name = $"{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}inc{nextBackupNumber}";
             var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
+            Log($"Creating incremental backup number {nextBackupNumber} at {nextIncrementalBackupPath} from {baseDir} and storing it at {s3folder}");
             Bash($"xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --incremental-basedir={baseDir} --target-dir={nextIncrementalBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
             
             //Notify
@@ -128,6 +134,10 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         throw;
     }
 });
+
+public void Log(string message){
+    Console.WriteLine($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")} {message}");
+}
 
 public void Bash(string cmd, Options o)
 {
