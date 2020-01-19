@@ -7,58 +7,58 @@ using System.Net.Mail;
 
 public class Options
 {
-    [Option('a', "backupdirectory", Required = true, HelpText = "Directory to store the backups")]
+    [Option('d', "backupdirectory", Required = true, HelpText = "Directory to store the backups")]
     public string BackupDirectory { get; set; }
 
-    [Option('b', "incrementalbackups", Required = false, Default=0, HelpText = "Number of incremental backups to create after the last full backup")]
+    [Option('i', "incrementalbackups", Required = false, Default=0, HelpText = "Number of incremental backups to create after the last full backup")]
     public int IncrementalBackupNumber { get; set; } = 0;
 
-    [Option('c', "mysqluser", Required = false, HelpText = "MySQL User")]
+    [Option('u', "mysqluser", Required = false, HelpText = "MySQL User")]
     public string MySqlUser { get; set; }
 
-    [Option('d', "mysqlpassword", Required = false, HelpText = "MySQL Password")]
+    [Option('p', "mysqlpassword", Required = false, HelpText = "MySQL Password")]
     public string MySqlPassword { get; set; }
 
-    [Option('e', "s3endpoint", Required = false, Default="s3.amazonaws.com", HelpText = "S3 endpoint")]
+    [Option("s3endpoint", Required = false, Default="s3.amazonaws.com", HelpText = "S3 endpoint")]
     public string S3Endpoint { get; set; } = "s3.amazonaws.com";
 
-    [Option('f', "s3region", Required = false, Default="us-east-1", HelpText = "S3 region")]
+    [Option("s3region", Required = false, Default="us-east-1", HelpText = "S3 region")]
     public string S3Region { get; set; } = "us-east-1";
 
-    [Option('g', "s3accesskey", Required = true, HelpText = "S3 access key")]
+    [Option("s3accesskey", Required = true, HelpText = "S3 access key")]
     public string S3AccessKey { get; set; }
 
-    [Option('h', "s3secretkey", Required = true, HelpText = "S3 secret access key")]
+    [Option("s3secretkey", Required = true, HelpText = "S3 secret access key")]
     public string S3SecretKey { get; set; }
 
-    [Option('i', "s3bucket", Required = true, HelpText = "S3 bucket name")]
+    [Option("s3bucket", Required = true, HelpText = "S3 bucket name")]
     public string S3Bucket { get; set; }
 
-    [Option('j', "s3folder", Required = false, HelpText = "S3 folder name")]
+    [Option("s3folder", Required = false, HelpText = "S3 folder name")]
     public string S3Folder { get; set; }
 
-    [Option('k', "s3paralleluploads", Required = false, Default = 8, HelpText = "S3 number of parallel uploads")]
+    [Option("s3paralleluploads", Required = false, Default = 8, HelpText = "S3 number of parallel uploads")]
     public int S3ParallelUploads { get; set; } = 8;
 
-    [Option('l', "smtpuser", Required = false, HelpText = "SMTP user")]
+    [Option("smtpuser", Required = false, HelpText = "SMTP user")]
     public string SmtpUser { get; set; }
 
-    [Option('m', "smtppassword", Required = false, HelpText = "SMTP password")]
+    [Option("smtppassword", Required = false, HelpText = "SMTP password")]
     public string SmtpPassword { get; set; }
 
-    [Option('n', "smtphost", Required = false, HelpText = "SMTP host")]
+    [Option("smtphost", Required = false, HelpText = "SMTP host")]
     public string SmtpHost { get; set; }
 
-    [Option('o', "smtpport", Required = false, HelpText = "SMTP port")]
+    [Option("smtpport", Required = false, HelpText = "SMTP port")]
     public int SmtpPort { get; set; }
 
-    [Option('p', "smtpfrom", Required = false, HelpText = "SMTP from")]
+    [Option("smtpfrom", Required = false, HelpText = "SMTP from")]
     public string SmtpFrom { get; set; }
 
-    [Option('q', "smtpto", Required = false, HelpText = "SMTP to")]
+    [Option("smtpto", Required = false, HelpText = "SMTP to")]
     public string SmtpTo { get; set; }
 
-    [Option('r', "notifysuccess", Required = false, Default=false, HelpText = "Set output to verbose messages")]
+    [Option('n', "notifysuccess", Required = false, Default=false, HelpText = "Set output to verbose messages")]
     public bool NotifySuccess { get; set; } = false;
 }
 
