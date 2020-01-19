@@ -83,7 +83,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
 
     //Get incremental backups
     var incrementalBackupDirInfo = new DirectoryInfo(incrementalBackupPath);
-    var incrementalBackups = incrementalBackupDirInfo.EnumerateDirectories(incrementalBackupPath).OrderBy(d => d.Name);
+    var incrementalBackups = incrementalBackupDirInfo.EnumerateDirectories().OrderBy(d => d.Name);
     var incrementalBackupCount = incrementalBackups.Count();
 
     //Check if the full backup needs to be cleaned
