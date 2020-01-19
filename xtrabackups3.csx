@@ -182,6 +182,7 @@ public void Bash(string cmd, Options o)
 
 public void SendEmail(string subject, string message, Options o){    
     if(!String.IsNullOrEmpty(o.SmtpHost)){
+        Log($"Sending notification to {o.SmtpTo}");
         // Credentials
         var credentials = new NetworkCredential(o.SmtpUser, o.SmtpPassword);
         // Mail message
