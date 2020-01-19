@@ -65,69 +65,71 @@ public class Options
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
 {
     try{
-    //Create backup directory if it doesn't exist
-    if(!Directory.Exists(o.BackupDirectory)){
-        Log($"Creating {o.BackupDirectory}");
-        Directory.CreateDirectory(o.BackupDirectory);
-    }
-
-    //Check if a full backup exists
-    var fullBackupPath = Path.Combine(o.BackupDirectory, "full");
-
-    //Check if incremental backup path exists
-    var incrementalBackupPath = Path.Combine(o.BackupDirectory, "inc");
-    if(!Directory.Exists(incrementalBackupPath)){
-        Log($"Creating {incrementalBackupPath} directory");
-        Directory.CreateDirectory(incrementalBackupPath);
-    }
-
-    //Get incremental backups
-    var incrementalBackupDirInfo = new DirectoryInfo(incrementalBackupPath);
-    var incrementalBackups = incrementalBackupDirInfo.EnumerateDirectories().OrderBy(d => d.Name);
-    var incrementalBackupCount = incrementalBackups.Count();
-
-    //Check if the full backup needs to be cleaned
-    if(Directory.Exists(fullBackupPath) && (o.IncrementalBackupNumber == 0 || incrementalBackupCount >= o.IncrementalBackupNumber)){
-        Log($"Cleaning {o.BackupDirectory} directory");
-        Directory.Delete(o.BackupDirectory, true);
-        Directory.CreateDirectory(o.BackupDirectory);
-        incrementalBackupCount = 0;
-    }
-
-    var mysqlUser = !String.IsNullOrEmpty(o.MySqlUser) ? $"--user={o.MySqlUser}" : "";
-    var mysqlPassword = !String.IsNullOrEmpty(o.MySqlPassword) ? $"--password={o.MySqlPassword}" : "";
-
-    if(!Directory.Exists(fullBackupPath)){
-        //Create full backup
-        Directory.CreateDirectory(fullBackupPath);
-        var news3Name = $"{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}full";
-        var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
-        Log($"Creating a full backup {fullBackupPath} and storing it at {s3folder}");
-        Bash($"xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={fullBackupPath} --target-dir={fullBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
-
-        //Notify
-        if(o.NotifySuccess){
-            SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+        //Create backup directory if it doesn't exist
+        if(!Directory.Exists(o.BackupDirectory)){
+            Log($"Creating {o.BackupDirectory}");
+            Directory.CreateDirectory(o.BackupDirectory);
         }
-    }
-    else{
-        if(o.IncrementalBackupNumber > 0){
-            //Create next incremental backup
-            var baseDir = incrementalBackupCount > 0 ? incrementalBackups.ElementAt(incrementalBackupCount - 1).FullName : fullBackupPath;
-            var nextBackupNumber = ++incrementalBackupCount;
-            var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, $"inc{nextBackupNumber}");
-            Directory.CreateDirectory(nextIncrementalBackupPath);
-            var news3Name = $"{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}inc{nextBackupNumber}";
+
+        //Check if a full backup exists
+        var fullBackupPath = Path.Combine(o.BackupDirectory, "full");
+
+        //Check if incremental backup path exists
+        var incrementalBackupPath = Path.Combine(o.BackupDirectory, "inc");
+        if(!Directory.Exists(incrementalBackupPath)){
+            Log($"Creating {incrementalBackupPath} directory");
+            Directory.CreateDirectory(incrementalBackupPath);
+        }
+
+        //Get incremental backups
+        var incrementalBackupDirInfo = new DirectoryInfo(incrementalBackupPath);
+        var incrementalBackups = incrementalBackupDirInfo.EnumerateDirectories().OrderBy(d => d.Name);
+        var incrementalBackupCount = incrementalBackups.Count();
+
+        //Check if the full backup needs to be cleaned
+        if(Directory.Exists(fullBackupPath) && (o.IncrementalBackupNumber == 0 || incrementalBackupCount >= o.IncrementalBackupNumber)){
+            Log($"Cleaning {o.BackupDirectory} directory");
+            Directory.Delete(o.BackupDirectory, true);
+            Directory.CreateDirectory(o.BackupDirectory);
+            incrementalBackupCount = 0;
+        }
+
+        var mysqlUser = !String.IsNullOrEmpty(o.MySqlUser) ? $"--user={o.MySqlUser}" : "";
+        var mysqlPassword = !String.IsNullOrEmpty(o.MySqlPassword) ? $"--password={o.MySqlPassword}" : "";
+
+        if(!Directory.Exists(fullBackupPath)){
+            //Create full backup
+            Directory.CreateDirectory(fullBackupPath);
+            var news3Name = $"{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}full";
             var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
-            Log($"Creating incremental backup number {nextBackupNumber} at {nextIncrementalBackupPath} from {baseDir} and storing it at {s3folder}");
-            Bash($"xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={nextIncrementalBackupPath} --incremental-basedir={baseDir} --target-dir={nextIncrementalBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
-            
+            Log($"Creating a full backup {fullBackupPath} and storing it at {s3folder}");
+            Bash($"xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={fullBackupPath} --target-dir={fullBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
+
             //Notify
             if(o.NotifySuccess){
                 SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
             }
         }
-    }
+        else{
+            if(o.IncrementalBackupNumber > 0){
+                //Create next incremental backup
+                var baseDir = incrementalBackupCount > 0 ? incrementalBackups.ElementAt(incrementalBackupCount - 1).FullName : fullBackupPath;
+                var nextBackupNumber = ++incrementalBackupCount;
+                var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, $"inc{nextBackupNumber}");
+                Directory.CreateDirectory(nextIncrementalBackupPath);
+                var news3Name = $"{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}inc{nextBackupNumber}";
+                var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
+                Log($"Creating incremental backup number {nextBackupNumber} at {nextIncrementalBackupPath} from {baseDir} and storing it at {s3folder}");
+                Bash($"xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={nextIncrementalBackupPath} --incremental-basedir={baseDir} --target-dir={nextIncrementalBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
+                
+                //Notify
+                if(o.NotifySuccess){
+                    SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+                }
+            }
+        }
+
+        Log("Done");
     }
     catch(Exception exc){
         SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed", $"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
