@@ -107,7 +107,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
 
         //Notify
         if(o.NotifySuccess){
-            SendEmail($"Backup {o.S3Bucket}/{s3folder} created", "Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+            SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
         }
     }
     else{
@@ -124,13 +124,13 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
             
             //Notify
             if(o.NotifySuccess){
-                SendEmail($"Backup {o.S3Bucket}/{s3folder} created", "Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+                SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
             }
         }
     }
     }
     catch(Exception exc){
-        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
+        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed", $"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
         throw;
     }
 });
