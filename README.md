@@ -4,7 +4,9 @@ Script to automate the creation and upload to s3 of incremental backups with xtr
 
 Requirements:
 
-.Net Core SDK (https://dotnet.microsoft.com/download) and dotnet script (https://github.com/filipw/dotnet-script) must be installed.
+- .Net Core SDK (https://dotnet.microsoft.com/download)
+- dotnet script (https://github.com/filipw/dotnet-script).
+- Percona xtrabackup (https://www.percona.com/doc/percona-xtrabackup/8.0/installation.html) including the xbcloud and xbstream binaries
 
 Installation: 
 
