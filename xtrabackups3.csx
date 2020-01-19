@@ -7,62 +7,59 @@ using System.Net.Mail;
 
 public class Options
 {
-    [Option('d', "backupdirectory", Required = true, HelpText = "Directory to store the backups")]
+    [Option('a', "backupdirectory", Required = true, HelpText = "Directory to store the backups")]
     public string BackupDirectory { get; set; }
 
-    [Option('i', "incrementalbackups", Required = false, Default=0, HelpText = "Number of incremental backups to create after the last full backup")]
+    [Option('b', "incrementalbackups", Required = false, Default=0, HelpText = "Number of incremental backups to create after the last full backup")]
     public int IncrementalBackupNumber { get; set; } = 0;
 
     [Option('c', "mysqluser", Required = false, HelpText = "MySQL User")]
     public string MySqlUser { get; set; }
 
-    [Option('g', "mysqlpassword", Required = false, HelpText = "MySQL Password")]
+    [Option('d', "mysqlpassword", Required = false, HelpText = "MySQL Password")]
     public string MySqlPassword { get; set; }
 
-    [Option('p', "s3endpoint", Required = false, Default="s3.amazonaws.com", HelpText = "S3 endpoint")]
+    [Option('e', "s3endpoint", Required = false, Default="s3.amazonaws.com", HelpText = "S3 endpoint")]
     public string S3Endpoint { get; set; } = "s3.amazonaws.com";
 
-    [Option('r', "s3region", Required = false, Default="us-east-1", HelpText = "S3 region")]
+    [Option('f', "s3region", Required = false, Default="us-east-1", HelpText = "S3 region")]
     public string S3Region { get; set; } = "us-east-1";
 
-    [Option('a', "s3accesskey", Required = true, HelpText = "S3 access key")]
+    [Option('g', "s3accesskey", Required = true, HelpText = "S3 access key")]
     public string S3AccessKey { get; set; }
 
-    [Option('s', "s3secretkey", Required = true, HelpText = "S3 secret access key")]
+    [Option('h', "s3secretkey", Required = true, HelpText = "S3 secret access key")]
     public string S3SecretKey { get; set; }
 
-    [Option('b', "s3bucket", Required = true, HelpText = "S3 bucket name")]
+    [Option('i', "s3bucket", Required = true, HelpText = "S3 bucket name")]
     public string S3Bucket { get; set; }
 
-    [Option('f', "s3folder", Required = false, HelpText = "S3 folder name")]
+    [Option('j', "s3folder", Required = false, HelpText = "S3 folder name")]
     public string S3Folder { get; set; }
 
-    [Option('u', "s3paralleluploads", Required = false, Default = 8, HelpText = "S3 number of parallel uploads")]
+    [Option('k', "s3paralleluploads", Required = false, Default = 8, HelpText = "S3 number of parallel uploads")]
     public int S3ParallelUploads { get; set; } = 8;
 
-    [Option('e', "smtpuser", Required = false, HelpText = "SMTP user")]
+    [Option('l', "smtpuser", Required = false, HelpText = "SMTP user")]
     public string SmtpUser { get; set; }
 
-    [Option('e', "smtppassword", Required = false, HelpText = "SMTP password")]
+    [Option('m', "smtppassword", Required = false, HelpText = "SMTP password")]
     public string SmtpPassword { get; set; }
 
-    [Option('e', "smtphost", Required = false, HelpText = "SMTP host")]
+    [Option('n', "smtphost", Required = false, HelpText = "SMTP host")]
     public string SmtpHost { get; set; }
 
-    [Option('e', "smtpport", Required = false, HelpText = "SMTP port")]
+    [Option('o', "smtpport", Required = false, HelpText = "SMTP port")]
     public int SmtpPort { get; set; }
 
-    [Option('e', "smtpfrom", Required = false, HelpText = "SMTP from")]
+    [Option('p', "smtpfrom", Required = false, HelpText = "SMTP from")]
     public string SmtpFrom { get; set; }
 
-    [Option('e', "smtpto", Required = false, HelpText = "SMTP to")]
+    [Option('q', "smtpto", Required = false, HelpText = "SMTP to")]
     public string SmtpTo { get; set; }
 
-    [Option('n', "notifysuccess", Required = false, Default=false, HelpText = "Set output to verbose messages")]
+    [Option('r', "notifysuccess", Required = false, Default=false, HelpText = "Set output to verbose messages")]
     public bool NotifySuccess { get; set; } = false;
-
-    // [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
-    // public bool Verbose { get; set; }
 }
 
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
