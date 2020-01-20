@@ -131,7 +131,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 }
             }
         }
-
+        
         Log("Done");
     }
     catch(Exception exc){
