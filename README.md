@@ -10,7 +10,7 @@ Requirements:
 
 Installation: 
 
-Mote: The script will backup the local installation of mysql, percona or mariadb, remote servers are not supported
+Note: The script will backup the local installation of mysql, percona or mariadb, remote servers are not supported
 
 ```bash
 wget https://raw.githubusercontent.com/rubenmch/dotnet-script-utilities/master/xtrabackups3.csx -O /opt/xbs3/xtrabackups3.csx
