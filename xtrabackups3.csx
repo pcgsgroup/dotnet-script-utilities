@@ -64,6 +64,9 @@ public class Options
 
     [Option("notifyincremental", Required = false, Default=false, HelpText = "Send an email notification when an incremental backup is created")]
     public bool NotifyIncremental { get; set; } = false;
+
+    [Option("notifylastincremental", Required = false, Default=false, HelpText = "Send an email notification when the last incremental backup is created")]
+    public bool NotifyLastIncremental { get; set; } = false;
 }
 
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
@@ -127,7 +130,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 Bash($"set -o pipefail && xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={nextIncrementalBackupPath} --incremental-basedir={baseDir} --target-dir={nextIncrementalBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
                 
                 //Notify
-                if(o.NotifyIncremental){
+                if(o.NotifyIncremental || (o.NotifyLastIncremental && nextBackupNumber == o.IncrementalBackupNumber)){
                     SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
                 }
             }
