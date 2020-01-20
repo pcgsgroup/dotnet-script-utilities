@@ -169,34 +169,34 @@ public void Bash(string cmd, Options o)
         {
             FileName = isLinux ? "/bin/bash" : "cmd.exe",
             Arguments = isLinux ? $"-c \"{escapedArgs}\"" : $"/C \"{escapedArgs}\"",
-            RedirectStandardOutput = true,
+            RedirectStandardOutput = false,
             UseShellExecute = false,
             CreateNoWindow = true,
-            RedirectStandardError = true
+            RedirectStandardError = false
         }
     };
 
     process.Start();
     process.WaitForExit();
 
-    // Read standard output
-    string result = process.StandardOutput.ReadToEnd();
-    if(!String.IsNullOrEmpty(result)){
-        Console.WriteLine(result);
-    }
+    // // Read standard output
+    // string result = process.StandardOutput.ReadToEnd();
+    // if(!String.IsNullOrEmpty(result)){
+    //     Console.WriteLine(result);
+    // }
 
-    //Read standard error
-    string error = process.StandardError.ReadToEnd();
-    if(!String.IsNullOrEmpty(error)){
-        Console.WriteLine(error);
-    }
+    // //Read standard error
+    // string error = process.StandardError.ReadToEnd();
+    // if(!String.IsNullOrEmpty(error)){
+    //     Console.WriteLine(error);
+    // }
 
     // Check exit code
     if(process.ExitCode != 0){
         Console.WriteLine($"ERROR: {cmd} exited with code {process.ExitCode}");
         
         //Notify
-        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed with error: {error}", o);
+        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed", o);
         Environment.Exit(1);
     }
 }
