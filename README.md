@@ -1,6 +1,6 @@
 # xtrabackups3.csx
 
-Script to automate the creation of mysql / percona / mariadb backups with xtrabackup and upload them to an Amazon S3 compatible service.
+Script to automate the creation of mysql / percona / mariadb backups with xtrabackup and upload them to an Amazon S3 compatible service
 
 Requirements:
 
