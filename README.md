@@ -1,6 +1,6 @@
 # xtrabackups3.csx
 
-Script to automate the creation and upload to s3 of incremental backups with xtrabackup.
+Script to automate the creation of mysql / percona / mariadb backups with xtrabackup and upload them to an Amazon S3 compatible service.
 
 Requirements:
 
@@ -9,6 +9,8 @@ Requirements:
 - Percona xtrabackup (https://www.percona.com/doc/percona-xtrabackup/8.0/installation.html) including the xbcloud and xbstream binaries
 
 Installation: 
+
+Mote: The script will backup the local installation of mysql, percona or mariadb, remote servers are not supported
 
 ```bash
 wget https://raw.githubusercontent.com/rubenmch/dotnet-script-utilities/master/xtrabackups3.csx -O /opt/xbs3/xtrabackups3.csx
