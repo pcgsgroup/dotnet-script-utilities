@@ -155,10 +155,10 @@ public void Bash(string cmd, Options o)
         {
             FileName = isLinux ? "/bin/bash" : "cmd.exe",
             Arguments = isLinux ? $"-c \"{escapedArgs}\"" : $"/C \"{escapedArgs}\"",
-            RedirectStandardOutput = true,
+            RedirectStandardOutput = false,
             UseShellExecute = false,
             CreateNoWindow = true,
-            RedirectStandardError = true
+            RedirectStandardError = false
         }
     };
 
