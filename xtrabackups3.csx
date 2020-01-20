@@ -1,12 +1,9 @@
 #!/usr/bin/env dotnet-script
 #r "nuget: CommandLineParser, 2.7.82"
-#r "nuget: AWSSDK.S3, 3.3.110.14"
 using CommandLine;
 using System.Runtime.InteropServices;
 using System.Net;
 using System.Net.Mail;
-using Amazon.S3;
-using Amazon.S3.Transfer;
 
 public class Options
 {
@@ -109,19 +106,8 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
             var news3Name = $"{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}full";
             var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
             Log($"Creating a full backup {fullBackupPath} and storing it at {s3folder}");
-            //Create the backup
-            // Bash($"set -o pipefail && xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={fullBackupPath} --target-dir={fullBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
-            Bash($"xtrabackup {mysqlUser} {mysqlPassword} --backup --target-dir={fullBackupPath}", o);
-            //Upload the backup
-            var s3Config = new AmazonS3Config { ServiceURL = o.S3Endpoint };
-            var s3Client = new AmazonS3Client(o.S3AccessKey, o.S3SecretKey, s3Config);
-            var directoryTransferUtility = new TransferUtility(s3Client);
-            var tuudr = new TransferUtilityUploadDirectoryRequest();
-            tuudr.Directory = fullBackupPath;
-            tuudr.BucketName = o.S3Bucket;
-            tuudr.KeyPrefix = $"{s3folder}/";
-            tuudr.SearchOption = SearchOption.AllDirectories;
-            directoryTransferUtility.UploadDirectory(tuudr);
+            Bash($"set -o pipefail && xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={fullBackupPath} --target-dir={fullBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
+
             //Notify
             if(o.NotifyFull){
                 SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
@@ -179,24 +165,24 @@ public void Bash(string cmd, Options o)
     process.Start();
     process.WaitForExit();
 
-    // Read standard output
-    string result = process.StandardOutput.ReadToEnd();
-    if(!String.IsNullOrEmpty(result)){
-        Console.WriteLine(result);
-    }
+    // // Read standard output
+    // string result = process.StandardOutput.ReadToEnd();
+    // if(!String.IsNullOrEmpty(result)){
+    //     Console.WriteLine(result);
+    // }
 
-    //Read standard error
-    string error = process.StandardError.ReadToEnd();
-    if(!String.IsNullOrEmpty(error)){
-        Console.WriteLine(error);
-    }
+    // //Read standard error
+    // string error = process.StandardError.ReadToEnd();
+    // if(!String.IsNullOrEmpty(error)){
+    //     Console.WriteLine(error);
+    // }
 
     // Check exit code
     if(process.ExitCode != 0){
         Console.WriteLine($"ERROR: {cmd} exited with code {process.ExitCode}");
         
         //Notify
-        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed with error: {error}", o);
+        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed", o);
         Environment.Exit(1);
     }
 }
