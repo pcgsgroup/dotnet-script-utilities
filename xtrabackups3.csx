@@ -171,14 +171,16 @@ public void Bash(string cmd, Options o)
         Console.WriteLine(result);
     }
 
+    //Read standard error
+    string error = process.StandardError.ReadToEnd();
+    if(!String.IsNullOrEmpty(error)){
+        Console.WriteLine(error);
+    }
+
     // Check exit code
     if(process.ExitCode != 0){
         Console.WriteLine($"ERROR: {cmd} exited with code {process.ExitCode}");
-        //Read standard error
-        string error = process.StandardError.ReadToEnd();
-        if(!String.IsNullOrEmpty(error)){
-            Console.WriteLine(error);
-        }
+        
         //Notify
         SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed with error: {error}", o);
         Environment.Exit(1);
