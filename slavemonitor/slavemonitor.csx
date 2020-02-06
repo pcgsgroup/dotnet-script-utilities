@@ -49,6 +49,9 @@ public class Options
 
     [Option("smtpto", Required = false, HelpText = "SMTP to")]
     public string SmtpTo { get; set; }
+
+    [Option('s', "notifysuccess", Required = false, Default=false, HelpText = "Send an email notification when the slave is OK")]
+    public bool NotifySuccess { get; set; } = false;
 }
 
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
@@ -101,6 +104,9 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
             }
         }
         Log("Done.");
+        if(o.NotifySuccess){
+            SendEmail($"{host} replication ok", $"Great news everyone! All replication channels for {host} are OK.", o);
+        }
     }
     catch(Exception exc)
     {

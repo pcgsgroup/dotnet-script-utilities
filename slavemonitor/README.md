@@ -10,6 +10,7 @@ Requirements:
 Installation: 
 
 ```bash
+mkdir /opt/dsutils
 wget https://raw.githubusercontent.com/rubenmch/dotnet-script-utilities/master/slavemonitor/slavemonitor.csx -O /opt/dsutils/slavemonitor.csx
 chmod +x /opt/dsutils/slavemonitor.csx
 ```
