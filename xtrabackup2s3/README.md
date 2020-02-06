@@ -25,7 +25,7 @@ WHICHDOTNETSCRIPT=`which dotnet-script`
 sed -i '1c#!'"$WHICHDOTNETSCRIPT" /opt/xbs3/xtrabackup2s3.csx
 cat << EOF > /etc/cron.daily/xbs3
 #!/bin/bash
-/opt/xbs3/xtrabackup2s3.csx --backupdirectory /var/opt/xbs3/backup --incrementalbackups 0 --mysqluser myuser --mysqlpassword mypwd --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket > /opt/xbs3/xbs3.log
+/opt/xbs3/xtrabackup2s3.csx --backupdirectory /var/opt/xbs3/backup --incrementalbackups 0 --mysqluser myuser --mysqlpassword mypwd --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket > /opt/xbs3/xbs3.log 2>&1
 EOF
 chmod +x /etc/cron.daily/xbs3
 ```
@@ -36,7 +36,7 @@ WHICHDOTNETSCRIPT=`which dotnet-script`
 sed -i '1c#!'"$WHICHDOTNETSCRIPT" /opt/xbs3/xtrabackup2s3.csx
 cat << EOF > /etc/cron.hourly/xbs3
 #!/bin/bash
-/opt/xbs3/xtrabackup2s3.csx --backupdirectory /var/opt/xbs3/backup --incrementalbackups 23 --mysqluser myuser --mysqlpassword mypwd --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket > /opt/xbs3/xbs3.log
+/opt/xbs3/xtrabackup2s3.csx --backupdirectory /var/opt/xbs3/backup --incrementalbackups 23 --mysqluser myuser --mysqlpassword mypwd --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket > /opt/xbs3/xbs3.log 2>&1
 EOF
 chmod +x /etc/cron.hourly/xbs3
 ```
@@ -47,7 +47,7 @@ WHICHDOTNETSCRIPT=`which dotnet-script`
 sed -i '1c#!'"$WHICHDOTNETSCRIPT" /opt/xbs3/xtrabackup2s3.csx
 cat << EOF > /etc/cron.hourly/xbs3
 #!/bin/bash
-/opt/xbs3/xtrabackup2s3.csx --backupdirectory /var/opt/xbs3/backup --incrementalbackups 23 --mysqluser myuser --mysqlpassword mypwd --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket --smtpuser myuser --smtppassword mypassword --smtphost smtp.gmail.com --smtpport 587 --smtpfrom me@gmail.com --smtpto you@gmail.com --notifyfull --notifyincremental > /opt/xbs3/xbs3.log
+/opt/xbs3/xtrabackup2s3.csx --backupdirectory /var/opt/xbs3/backup --incrementalbackups 23 --mysqluser myuser --mysqlpassword mypwd --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket --smtpuser myuser --smtppassword mypassword --smtphost smtp.gmail.com --smtpport 587 --smtpfrom me@gmail.com --smtpto you@gmail.com --notifyfull --notifyincremental > /opt/xbs3/xbs3.log 2>&1
 EOF
 chmod +x /etc/cron.hourly/xbs3
 ```

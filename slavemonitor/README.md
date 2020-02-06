@@ -23,7 +23,7 @@ WHICHDOTNETSCRIPT=`which dotnet-script`
 sed -i '1c#!'"$WHICHDOTNETSCRIPT" /opt/dsutils/slavemonitor.csx
 cat << EOF > /etc/cron.hourly/slavemonitor
 #!/bin/bash
-/opt/dsutils/slavemonitor.csx -n myslavename -h localhost -P 3306 --mysqluser myuser --mysqlpassword mypwd --smtpuser myuser --smtppassword mypassword --smtphost smtp.gmail.com --smtpport 587 --smtpfrom me@gmail.com --smtpto you@gmail.com > /opt/dsutils/slavemonitor.log
+/opt/dsutils/slavemonitor.csx -n myslavename -h localhost -P 3306 --mysqluser myuser --mysqlpassword mypwd --smtpuser myuser --smtppassword mypassword --smtphost smtp.gmail.com --smtpport 587 --smtpfrom me@gmail.com --smtpto you@gmail.com > /opt/dsutils/slavemonitor.log 2>&1
 EOF
 chmod +x /etc/cron.hourly/slavemonitor
 ```

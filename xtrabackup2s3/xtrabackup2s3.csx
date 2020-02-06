@@ -131,7 +131,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 //Create next incremental backup
                 var baseDir = incrementalBackupCount > 0 ? incrementalBackups.ElementAt(incrementalBackupCount - 1).FullName : fullBackupPath;
                 var nextBackupNumber = ++incrementalBackupCount;
-                var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, $"inc{nextBackupNumber}");
+                var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, String.Format("inc{0:D4}", nextBackupNumber));
                 Directory.CreateDirectory(nextIncrementalBackupPath);
                 var news3Name = $"{DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss")}inc{nextBackupNumber}";
                 var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
