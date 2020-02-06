@@ -30,7 +30,7 @@ EOF
 chmod +x /etc/cron.daily/xbs3
 ```
 
-Daily full backup plus 23 hourly differential backups everyday
+Daily full backup plus 23 hourly differential backups
 ```bash
 WHICHDOTNETSCRIPT=`which dotnet-script`
 sed -i '1c#!'"$WHICHDOTNETSCRIPT" /opt/xbs3/xtrabackup2s3.csx
@@ -41,7 +41,7 @@ EOF
 chmod +x /etc/cron.hourly/xbs3
 ```
 
-Daily full backup plus 23 hourly incremental backups everyday with email notification of errors and successful completion
+Daily full backup plus 23 hourly incremental backups with email notification of errors and successful completion
 ```bash 
 WHICHDOTNETSCRIPT=`which dotnet-script`
 sed -i '1c#!'"$WHICHDOTNETSCRIPT" /opt/xbs3/xtrabackup2s3.csx
