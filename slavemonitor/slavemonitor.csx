@@ -2,6 +2,7 @@
 #r "nuget: CommandLineParser, 2.7.82"
 #r "nuget: Dapper, 2.0.30"
 #r "nuget: MySql.Data, 6.10.9"
+#r "nuget: Flurl.Http, 2.4.2"
 
 using CommandLine;
 using System.Runtime.InteropServices;
@@ -11,6 +12,8 @@ using System.Data;
 using MySql.Data;
 using MySql.Data.MySqlClient;
 using Dapper;
+using Flurl;
+using Flurl.Http;
 
 public class Options
 {
@@ -52,6 +55,12 @@ public class Options
 
     [Option('s', "notifysuccess", Required = false, Default=false, HelpText = "Send an email notification when the slave is OK")]
     public bool NotifySuccess { get; set; } = false;
+
+    [Option("pushoveruser", Required = false, HelpText = "Pushover user to send pushover notifications")]
+    public string PushoverUser { get; set; }
+
+    [Option("pushovertoken", Required = false, HelpText = "Pushover token to send pushover notifications")]
+    public string PushoverToken { get; set; }
 }
 
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
@@ -80,14 +89,14 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                             errors.AppendLine($"SQL Error: {statusRow.Last_SQL_Errno} {statusRow.Last_SQL_Error}");
                         }
                         Log($"ERROR Replication stopped\r\n{errors.ToString()}");
-                        SendEmail($"{host} REPLICATION ERROR", $"Errors: \r\n\r\n{errors.ToString()}", o);
+                        NotifyError($"{host} REPLICATION ERROR", $"Errors: \r\n\r\n{errors.ToString()}", o);
                         Environment.Exit(1);
                     }
                     //Check replication lag
                     else if(Convert.ToInt32(statusRow.Seconds_Behind_Master) > o.MaxSlaveLagSeconds){
                         //Too much lag
                         Log($"ERROR Too much lag {statusRow.Seconds_Behind_Master}s behind master");
-                        SendEmail($"{host} {statusRow.Seconds_Behind_Master}s LAG", $"Seconds Behind Master: {statusRow.Seconds_Behind_Master}", o);
+                        NotifyError($"{host} {statusRow.Seconds_Behind_Master}s LAG", $"Seconds Behind Master: {statusRow.Seconds_Behind_Master}", o);
                         Environment.Exit(2);
                     }
                     else{
@@ -99,19 +108,19 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
             else{
                 //No replication channels found, something is wrong
                 Log($"ERROR No replication channels found");
-                SendEmail($"{host} NO REPLICATION CHANNELS FOUND", $"No replication channels found for {host}", o);
+                NotifyError($"{host} NO REPLICATION CHANNELS FOUND", $"No replication channels found for {host}", o);
                 Environment.Exit(2);
             }
         }
         Log("Done.");
         if(o.NotifySuccess){
-            SendEmail($"{host} replication ok", $"Great news everyone! All replication channels for {host} are OK.", o);
+            Notify($"{host} replication ok", $"Great news everyone! All replication channels for {host} are OK.", o);
         }
     }
     catch(Exception exc)
     {
         Log(exc.ToString());
-        SendEmail($"MONITOR {host} ERROR", $"Monitor {host} failed with exception:\r\n\r\n{exc.ToString()}", o);
+        NotifyError($"MONITOR {host} ERROR", $"Monitor {host} failed with exception:\r\n\r\n{exc.ToString()}", o);
         throw;
     }
 });
@@ -120,7 +129,17 @@ public void Log(string message){
     Console.WriteLine($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")} {message}");
 }
 
-public void SendEmail(string subject, string message, Options o){    
+public void Notify(string subject, string message, Options o){
+    NotifyEmail(subject, message, o);
+    NotifyPushover(message, -2, o);
+}
+
+public void NotifyError(string subject, string message, Options o){
+    NotifyEmail(subject, message, o);
+    NotifyPushover(message, 2, o);
+}
+
+public void NotifyEmail(string subject, string message, Options o){    
     if(!String.IsNullOrEmpty(o.SmtpHost)){
         Log($"Sending notification to {o.SmtpTo}");
         // Credentials
@@ -145,5 +164,20 @@ public void SendEmail(string subject, string message, Options o){
             Credentials = credentials
         };
         client.Send(mail);
+    }
+}
+
+public void NotifyPushover(string message, short priority, Options o){    
+    if(!String.IsNullOrEmpty(o.PushoverToken)){
+        Log($"Sending Pushover Notification");
+        
+        "https://api.pushover.net/1/messages.json".PostJsonAsync(new {
+            token = o.PushoverToken,
+            user = o.PushoverUser,
+            message,
+            priority,
+            expire = 1200,
+            retry = 120
+        }).Wait();
     }
 }

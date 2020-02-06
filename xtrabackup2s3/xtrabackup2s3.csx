@@ -1,10 +1,13 @@
 #!/usr/bin/env dotnet-script
 #r "nuget: CommandLineParser, 2.7.82"
+#r "nuget: Flurl.Http, 2.4.2"
 
 using CommandLine;
 using System.Runtime.InteropServices;
 using System.Net;
 using System.Net.Mail;
+using Flurl;
+using Flurl.Http;
 
 public class Options
 {
@@ -67,6 +70,12 @@ public class Options
 
     [Option("notifylastincremental", Required = false, Default=false, HelpText = "Send an email notification when the last incremental backup is created")]
     public bool NotifyLastIncremental { get; set; } = false;
+
+    [Option("pushoveruser", Required = false, HelpText = "Pushover user to send pushover notifications")]
+    public string PushoverUser { get; set; }
+
+    [Option("pushovertoken", Required = false, HelpText = "Pushover token to send pushover notifications")]
+    public string PushoverToken { get; set; }
 }
 
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
@@ -114,7 +123,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
 
             //Notify
             if(o.NotifyFull){
-                SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+                Notify($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
             }
         }
         else{
@@ -131,7 +140,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 
                 //Notify
                 if(o.NotifyIncremental || (o.NotifyLastIncremental && nextBackupNumber == o.IncrementalBackupNumber)){
-                    SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+                    Notify($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
                 }
             }
         }
@@ -140,7 +149,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
     }
     catch(Exception exc){
         Log(exc.ToString());
-        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed", $"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
+        NotifyError($"Backup {o.S3Bucket}/{o.S3Folder} failed", $"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
         throw;
     }
 });
@@ -187,12 +196,22 @@ public void Bash(string cmd, Options o)
         Console.WriteLine($"ERROR: {cmd} exited with code {process.ExitCode}");
         
         //Notify
-        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed", o);
+        NotifyError($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} bash statement failed with exit code {process.ExitCode}", o);
         Environment.Exit(1);
     }
 }
 
-public void SendEmail(string subject, string message, Options o){    
+public void Notify(string subject, string message, Options o){
+    NotifyEmail(subject, message, o);
+    NotifyPushover(message, -1, o);
+}
+
+public void NotifyError(string subject, string message, Options o){
+    NotifyEmail(subject, message, o);
+    NotifyPushover(message, 2, o);
+}
+
+public void NotifyEmail(string subject, string message, Options o){    
     if(!String.IsNullOrEmpty(o.SmtpHost)){
         Log($"Sending notification to {o.SmtpTo}");
         // Credentials
@@ -217,5 +236,20 @@ public void SendEmail(string subject, string message, Options o){
             Credentials = credentials
         };
         client.Send(mail);
+    }
+}
+
+public void NotifyPushover(string message, short priority, Options o){    
+    if(!String.IsNullOrEmpty(o.PushoverToken)){
+        Log($"Sending Pushover Notification");
+        
+        "https://api.pushover.net/1/messages.json".PostJsonAsync(new {
+            token = o.PushoverToken,
+            user = o.PushoverUser,
+            message,
+            priority,
+            expire = 1200,
+            retry = 120
+        }).Wait();
     }
 }
