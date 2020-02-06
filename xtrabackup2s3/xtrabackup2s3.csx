@@ -14,14 +14,17 @@ public class Options
     [Option('d', "backupdirectory", Required = true, HelpText = "Directory to store the backups")]
     public string BackupDirectory { get; set; }
 
-    [Option('i', "incrementalbackups", Required = false, Default=0, HelpText = "Number of incremental backups to create after the last full backup")]
-    public int IncrementalBackupNumber { get; set; } = 0;
+    [Option('b', "partialbackups", Required = false, Default=0, HelpText = "Number of partial backups to create after the last full backup")]
+    public int PartialBackupNumber { get; set; } = 0;
 
     [Option('u', "mysqluser", Required = false, HelpText = "MySQL User")]
     public string MySqlUser { get; set; }
 
     [Option('p', "mysqlpassword", Required = false, HelpText = "MySQL Password")]
     public string MySqlPassword { get; set; }
+
+    [Option('i', "incremental", Required = false, Default=false, HelpText = "If true creates incremental partial backups, if false creates differential partial backups")]
+    public bool Incremental { get; set; } = false;
 
     [Option("s3endpoint", Required = false, Default="s3.amazonaws.com", HelpText = "S3 endpoint")]
     public string S3Endpoint { get; set; } = "s3.amazonaws.com";
@@ -65,11 +68,11 @@ public class Options
     [Option('n', "notifyfull", Required = false, Default=false, HelpText = "Send an email notification when a full backup is created")]
     public bool NotifyFull { get; set; } = false;
 
-    [Option("notifyincremental", Required = false, Default=false, HelpText = "Send an email notification when an incremental backup is created")]
-    public bool NotifyIncremental { get; set; } = false;
+    [Option("notifypartial", Required = false, Default=false, HelpText = "Send an email notification when a partial backup is created")]
+    public bool NotifyPartial { get; set; } = false;
 
-    [Option("notifylastincremental", Required = false, Default=false, HelpText = "Send an email notification when the last incremental backup is created")]
-    public bool NotifyLastIncremental { get; set; } = false;
+    [Option("notifylastpartial", Required = false, Default=false, HelpText = "Send an email notification when the last partial backup is created")]
+    public bool NotifyLastPartial { get; set; } = false;
 
     [Option("pushoveruser", Required = false, HelpText = "Pushover user to send pushover notifications")]
     public string PushoverUser { get; set; }
@@ -91,7 +94,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         var fullBackupPath = Path.Combine(o.BackupDirectory, "full");
 
         //Check if incremental backup path exists
-        var incrementalBackupPath = Path.Combine(o.BackupDirectory, "inc");
+        var incrementalBackupPath = Path.Combine(o.BackupDirectory, "partial");
         if(!Directory.Exists(incrementalBackupPath)){
             Log($"Creating {incrementalBackupPath} directory");
             Directory.CreateDirectory(incrementalBackupPath);
@@ -103,7 +106,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         var incrementalBackupCount = incrementalBackups.Count();
 
         //Check if the full backup needs to be cleaned
-        if(Directory.Exists(fullBackupPath) && (o.IncrementalBackupNumber == 0 || incrementalBackupCount >= o.IncrementalBackupNumber)){
+        if(Directory.Exists(fullBackupPath) && (o.PartialBackupNumber == 0 || incrementalBackupCount >= o.PartialBackupNumber)){
             Log($"Cleaning {o.BackupDirectory} directory");
             Directory.Delete(o.BackupDirectory, true);
             Directory.CreateDirectory(o.BackupDirectory);
@@ -127,19 +130,20 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
             }
         }
         else{
-            if(o.IncrementalBackupNumber > 0){
+            if(o.PartialBackupNumber > 0){
                 //Create next incremental backup
-                var baseDir = incrementalBackupCount > 0 ? incrementalBackups.ElementAt(incrementalBackupCount - 1).FullName : fullBackupPath;
+                var partialBackupPrefix = o.Incremental ? "inc" : "diff";
+                var baseDir = (incrementalBackupCount > 0 && o.Incremental) ? incrementalBackups.ElementAt(incrementalBackupCount - 1).FullName : fullBackupPath;
                 var nextBackupNumber = ++incrementalBackupCount;
-                var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, String.Format("inc{0:D4}", nextBackupNumber));
+                var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, String.Format("{partialBackupPrefix}{0:D4}", nextBackupNumber));
                 Directory.CreateDirectory(nextIncrementalBackupPath);
-                var news3Name = $"{DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss")}inc{nextBackupNumber}";
+                var news3Name = $"{DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss")}{partialBackupPrefix}{nextBackupNumber}";
                 var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
-                Log($"Creating incremental backup number {nextBackupNumber} at {nextIncrementalBackupPath} from {baseDir} and storing it at {s3folder}");
+                Log($"Creating partial backup number {nextBackupNumber} at {nextIncrementalBackupPath} from {baseDir} and storing it at {s3folder}");
                 Bash($"set -o pipefail && xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={nextIncrementalBackupPath} --incremental-basedir={baseDir} --target-dir={nextIncrementalBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
                 
                 //Notify
-                if(o.NotifyIncremental || (o.NotifyLastIncremental && nextBackupNumber == o.IncrementalBackupNumber)){
+                if(o.NotifyPartial || (o.NotifyLastPartial && nextBackupNumber == o.PartialBackupNumber)){
                     Notify($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
                 }
             }
