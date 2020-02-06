@@ -135,7 +135,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 var partialBackupPrefix = o.Incremental ? "inc" : "diff";
                 var baseDir = (incrementalBackupCount > 0 && o.Incremental) ? incrementalBackups.ElementAt(incrementalBackupCount - 1).FullName : fullBackupPath;
                 var nextBackupNumber = ++incrementalBackupCount;
-                var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, String.Format("{partialBackupPrefix}{0:D4}", nextBackupNumber));
+                var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, String.Format("{1}{0:D4}", nextBackupNumber, partialBackupPrefix));
                 Directory.CreateDirectory(nextIncrementalBackupPath);
                 var news3Name = $"{DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss")}{partialBackupPrefix}{nextBackupNumber}";
                 var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
