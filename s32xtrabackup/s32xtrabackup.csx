@@ -78,10 +78,12 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
 {
     try{
         //Create backup directory if it doesn't exist
-        if(!Directory.Exists(o.BackupDirectory)){
-            Log($"Creating {o.BackupDirectory}");
-            Directory.CreateDirectory(o.BackupDirectory);
+        if(Directory.Exists(o.BackupDirectory)){
+            Directory.Delete(o.BackupDirectory, true);
         }
+
+        Log($"Creating {o.BackupDirectory}");
+        Directory.CreateDirectory(o.BackupDirectory);
 
         //Get the existing backups
         var minio = new MinioClient(o.S3Endpoint, o.S3AccessKey, o.S3SecretKey).WithSSL();

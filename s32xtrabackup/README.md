@@ -13,6 +13,7 @@ Installation:
 Note: The script will restore the local installation of mysql, percona or mariadb. Remote servers are not supported
 
 ```bash
+mkdir /opt/xbs3
 wget https://raw.githubusercontent.com/rubenmch/dotnet-script-utilities/master/s32xtrabackup/s32xtrabackup.csx -O /opt/xbs3/s32xtrabackup.csx
 chmod +x /opt/xbs3/s32xtrabackup.csx
 ```
