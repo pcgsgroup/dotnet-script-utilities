@@ -1,6 +1,7 @@
 #!/usr/bin/env dotnet-script
 #r "nuget: CommandLineParser, 2.7.82"
 #r "nuget: Minio, 3.1.9"
+#r "nuget: Flurl.Http, 2.4.2"
 
 using CommandLine;
 using System.Runtime.InteropServices;
@@ -9,20 +10,26 @@ using System.Net.Mail;
 using System.Reactive.Linq;
 using Minio;
 using Minio.DataModel;
+using Flurl;
+using Flurl.Http;
+using System.Text.RegularExpressions;
 
 public class Options
 {
     [Option('d', "backupdirectory", Required = true, HelpText = "Directory to store the backups")]
     public string BackupDirectory { get; set; }
 
-    [Option('i', "incrementalbackups", Required = false, Default=99, HelpText = "Number of incremental backups to restore after the full backup")]
-    public int IncrementalBackupNumber { get; set; } = 99;
+    [Option('b', "partialbackups", Required = false, Default=99, HelpText = "Number of partial backups to restore after the full backup")]
+    public int PartialBackupNumber { get; set; } = 99;
 
     [Option('u', "mysqluser", Required = false, HelpText = "MySQL User")]
     public string MySqlUser { get; set; }
 
     [Option('p', "mysqlpassword", Required = false, HelpText = "MySQL Password")]
     public string MySqlPassword { get; set; }
+
+    [Option('D', "mysqldatadir", Required = false, Default="/var/lib/mysql", HelpText = "MySQL Data Directory")]
+    public string MySqlDataDir { get; set; } = "/var/lib/mysql";
 
     [Option("s3endpoint", Required = false, Default="s3.amazonaws.com", HelpText = "S3 endpoint")]
     public string S3Endpoint { get; set; } = "s3.amazonaws.com";
@@ -65,6 +72,12 @@ public class Options
 
     [Option('n', "notifysuccess", Required = false, Default=false, HelpText = "Send an email notification when the backup restore is completed")]
     public bool NotifySuccess { get; set; } = false;
+
+    [Option("pushoveruser", Required = false, HelpText = "Pushover user to send pushover notifications")]
+    public string PushoverUser { get; set; }
+
+    [Option("pushovertoken", Required = false, HelpText = "Pushover token to send pushover notifications")]
+    public string PushoverToken { get; set; }
 }
 
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
@@ -81,55 +94,119 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         var observable = minio.ListObjectsAsync(o.S3Bucket, $"{o.S3Folder}/", false);
         //To sort the backups by folder name
         var backups = new SortedList<string, string>();
-        var subscription = observable.Subscribe(entry => {
-            Log(entry.Key);
-            // backups.Add(entry.Key, entry.Key);
-            
-            //Get the folder
-            // var folder = !String.IsNullOrEmpty(o.S3Folder) ? entry.Key.Replace(o.S3Folder, "").TrimStart('/') : entry.Key;
-            // folder = folder.Split('/')[0];
-            // //Don't duplicate folders
-            // //if(!backups.ContainsKey(folder)){
-            //     backups.Add(folder, folder);
-            //}
-        });
-        observable.Wait();
+        observable.ForEachAsync(entry => {
+            // Log(entry.Key);
+            backups.Add(entry.Key, entry.Key);}
+            ).Wait();
 
         //Get the last full and incremental backups
         string fullBackup = "";
+        var differentialBackups = new List<string>();
         var toRestore = new List<string>();
         foreach(var kv in backups){
             var key =  kv.Key.TrimEnd('/');
+            //Check if it's a full backup
             if(key.EndsWith("full")){
+                //Clear the previous partial backups
                 toRestore.Clear();
+                differentialBackups.Clear();
                 fullBackup = key;
             }
+            //Check if it's a differential backup
+            else if(Regex.IsMatch(key, ".+diff[0-9]+$")){
+                //Store the most recent differential backup
+                differentialBackups.Add(key);
+            }
             else{
+                //It's an incremental backup
                 toRestore.Add(key);
             }
         }
 
-        //Restore the full backup plus the specified number of incremental backups
-        var incrementalToRestore = toRestore.Take(o.IncrementalBackupNumber);
+        //Restore the full backup plus the specified number of partial backups
+        var incrementalToRestore = toRestore.Take(o.PartialBackupNumber);
+        var differentialBackup = differentialBackups.Take(o.PartialBackupNumber).LastOrDefault();
 
-        if(toRestore.Count > 0 && toRestore[0].EndsWith("full")){
+        if(!String.IsNullOrEmpty(fullBackup)){
             //backups found, confirm restoration
             Console.WriteLine("The following backups will be restored:");
             char userResponse;
             Console.WriteLine(fullBackup);
-            foreach(var backup in incrementalToRestore){
-                Console.WriteLine(backup);
+            if(String.IsNullOrEmpty(differentialBackup)){
+                foreach(var backup in incrementalToRestore){
+                    Console.WriteLine(backup);
+                }
+            }
+            else{
+                Console.WriteLine(differentialBackup);
             }
             do{
+                Console.WriteLine($"WARNING: MySql data dir {o.MySqlDataDir} will be emptied and replaced");
                 Console.WriteLine("Do you want to restore those backups? Y=yes, N=no");
                 userResponse = Console.ReadKey().KeyChar;
                 Console.WriteLine();
             } while(userResponse != 'Y' && userResponse != 'N');
             if(userResponse == 'Y'){
-                //Restore the backups
-                foreach(var backup in incrementalToRestore){
-
+                //Prepare the folders
+                //Create full backup folder
+                var fullBackupPath = Path.Combine(o.BackupDirectory, "full");
+                if(!Directory.Exists(fullBackupPath)){
+                    Log($"Creating {fullBackupPath} directory...");
+                    Directory.CreateDirectory(fullBackupPath);
                 }
+
+                //Create incremental backup folder
+                var incrementalBackupPath = Path.Combine(o.BackupDirectory, "partial");
+                if(!Directory.Exists(incrementalBackupPath)){
+                    Log($"Creating {incrementalBackupPath} directory...");
+                    Directory.CreateDirectory(incrementalBackupPath);
+                }
+
+                //Download and prepare the full backup
+                Log($"Downloading full backup {fullBackup} and storing it at {fullBackupPath}...");
+                Bash($"set -o pipefail && xbcloud get --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelDownloads} {fullBackup} | xbstream -xv -C {fullBackupPath}", o);
+
+                Log($"Preparing {fullBackupPath}...");
+                Bash($"xtrabackup --prepare --apply-log-only --target-dir={fullBackupPath}", o);
+
+                //Download and prepare the differential backup
+                if(!String.IsNullOrEmpty(differentialBackup)){
+                    Log($"Downloading differential backup {differentialBackup} and storing it at {incrementalBackupPath}...");
+                    Bash($"set -o pipefail && xbcloud get --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelDownloads} {differentialBackup} | xbstream -xv -C {incrementalBackupPath}", o);
+
+                    Log($"Preparing {incrementalBackupPath}...");
+                    Bash($"xtrabackup --prepare --apply-log-only --target-dir={fullBackupPath} --incremental-dir={incrementalBackupPath}", o);
+
+                    Log($"Preparing {fullBackupPath}...");
+                    Bash($"xtrabackup --prepare --target-dir={fullBackupPath}", o);
+                }
+                else{
+                    //Download and prepare the incremental backups
+                    Log("Not implemented! Use differential backups instead or restore them manually.");
+                    Environment.Exit(5);
+                }
+
+                //Stop mysql
+                Log($"Stopping MySql...");
+                Bash($"service mysql stop", o);
+
+                //Emptying mysql data dir
+                if(Directory.Exists(o.MySqlDataDir)){
+                    Log($"Emptying Mysql data dir...");
+                    Bash($"rm -R {o.MySqlDataDir}", o);
+                }
+
+                //Move back the full backup
+                Log($"Moving back {fullBackupPath}...");
+                Bash($"xtrabackup --move-back --target-dir={fullBackupPath}", o);
+
+                Log($"Changing mysql data dir owner...");
+                Bash($"chown -R mysql:mysql {o.MySqlDataDir}", o);
+                
+                Log($"Starting MySql...");
+                Bash($"service mysql start", o);
+
+                Log($"Done.");
             }
             else{
                 //Exit
@@ -140,69 +217,11 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         else{
             Log("No backups found in the specified S3 folder. The folder should contain subfolders ending with full, inc1, inc2, etc");
         }
-
-        // //Check if a full backup exists
-        // var fullBackupPath = Path.Combine(o.BackupDirectory, "full");
-
-        // //Check if incremental backup path exists
-        // var incrementalBackupPath = Path.Combine(o.BackupDirectory, "inc");
-        // if(!Directory.Exists(incrementalBackupPath)){
-        //     Log($"Creating {incrementalBackupPath} directory");
-        //     Directory.CreateDirectory(incrementalBackupPath);
-        // }
-
-        // //Get incremental backups
-        // var incrementalBackupDirInfo = new DirectoryInfo(incrementalBackupPath);
-        // var incrementalBackups = incrementalBackupDirInfo.EnumerateDirectories().OrderBy(d => d.Name);
-        // var incrementalBackupCount = incrementalBackups.Count();
-
-        // //Check if the full backup needs to be cleaned
-        // if(Directory.Exists(fullBackupPath) && (o.IncrementalBackupNumber == 0 || incrementalBackupCount >= o.IncrementalBackupNumber)){
-        //     Log($"Cleaning {o.BackupDirectory} directory");
-        //     Directory.Delete(o.BackupDirectory, true);
-        //     Directory.CreateDirectory(o.BackupDirectory);
-        //     incrementalBackupCount = 0;
-        // }
-
-        // var mysqlUser = !String.IsNullOrEmpty(o.MySqlUser) ? $"--user={o.MySqlUser}" : "";
-        // var mysqlPassword = !String.IsNullOrEmpty(o.MySqlPassword) ? $"--password={o.MySqlPassword}" : "";
-
-        // if(!Directory.Exists(fullBackupPath)){
-        //     //Create full backup
-        //     Directory.CreateDirectory(fullBackupPath);
-        //     var news3Name = $"{DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss")}full";
-        //     var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
-        //     Log($"Creating a full backup {fullBackupPath} and storing it at {s3folder}");
-        //     Bash($"set -o pipefail && xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={fullBackupPath} --target-dir={fullBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
-
-        //     //Notify
-        //     if(o.NotifyFull){
-        //         SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
-        //     }
-        // }
-        // else{
-        //     if(o.IncrementalBackupNumber > 0){
-        //         //Create next incremental backup
-        //         var baseDir = incrementalBackupCount > 0 ? incrementalBackups.ElementAt(incrementalBackupCount - 1).FullName : fullBackupPath;
-        //         var nextBackupNumber = ++incrementalBackupCount;
-        //         var nextIncrementalBackupPath = Path.Combine(incrementalBackupPath, $"inc{nextBackupNumber}");
-        //         Directory.CreateDirectory(nextIncrementalBackupPath);
-        //         var news3Name = $"{DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss")}inc{nextBackupNumber}";
-        //         var s3folder = !String.IsNullOrEmpty(o.S3Folder) ? $"{o.S3Folder}/{news3Name}" : news3Name;
-        //         Log($"Creating incremental backup number {nextBackupNumber} at {nextIncrementalBackupPath} from {baseDir} and storing it at {s3folder}");
-        //         Bash($"set -o pipefail && xtrabackup {mysqlUser} {mysqlPassword} --backup --stream=xbstream --extra-lsndir={nextIncrementalBackupPath} --incremental-basedir={baseDir} --target-dir={nextIncrementalBackupPath} | xbcloud put --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelUploads} {s3folder}", o);
-                
-        //         //Notify
-        //         if(o.NotifyIncremental || (o.NotifyLastIncremental && nextBackupNumber == o.IncrementalBackupNumber)){
-        //             SendEmail($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
-        //         }
-        //     }
-        // }
         
         Log("Done");
     }
     catch(Exception exc){
-        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed", $"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
+        NotifyError($"Backup {o.S3Bucket}/{o.S3Folder} failed", $"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
         throw;
     }
 });
@@ -237,12 +256,22 @@ public void Bash(string cmd, Options o)
         Console.WriteLine($"ERROR: {cmd} exited with code {process.ExitCode}");
         
         //Notify
-        SendEmail($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed", o);
+        NotifyError($"Backup {o.S3Bucket}/{o.S3Folder} failed",$"Backup {o.S3Bucket}/{o.S3Folder} creation failed", o);
         Environment.Exit(1);
     }
 }
 
-public void SendEmail(string subject, string message, Options o){    
+public void Notify(string subject, string message, Options o){
+    NotifyEmail(subject, message, o);
+    NotifyPushover(message, -1, o);
+}
+
+public void NotifyError(string subject, string message, Options o){
+    NotifyEmail(subject, message, o);
+    NotifyPushover(message, 2, o);
+}
+
+public void NotifyEmail(string subject, string message, Options o){    
     if(!String.IsNullOrEmpty(o.SmtpHost)){
         Log($"Sending notification to {o.SmtpTo}");
         // Credentials
@@ -267,5 +296,20 @@ public void SendEmail(string subject, string message, Options o){
             Credentials = credentials
         };
         client.Send(mail);
+    }
+}
+
+public void NotifyPushover(string message, short priority, Options o){    
+    if(!String.IsNullOrEmpty(o.PushoverToken)){
+        Log($"Sending Pushover Notification");
+        
+        "https://api.pushover.net/1/messages.json".PostJsonAsync(new {
+            token = o.PushoverToken,
+            user = o.PushoverUser,
+            message,
+            priority,
+            expire = 1200,
+            retry = 120
+        }).Wait();
     }
 }
