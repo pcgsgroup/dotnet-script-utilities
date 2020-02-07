@@ -114,7 +114,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         }
         Log("Done.");
         if(o.NotifySuccess){
-            Notify($"{host} replication ok", $"Great news everyone! All replication channels for {host} are OK.", o);
+            Notify($"{host} replication ok", $"{host} replication OK", o);
         }
     }
     catch(Exception exc)

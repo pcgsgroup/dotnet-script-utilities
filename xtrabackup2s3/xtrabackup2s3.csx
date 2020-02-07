@@ -126,7 +126,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
 
             //Notify
             if(o.NotifyFull){
-                Notify($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+                Notify($"Backup {o.S3Bucket}/{s3folder} created", $"{o.S3Bucket}/{s3folder} created", o);
             }
         }
         else{
@@ -144,7 +144,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 
                 //Notify
                 if(o.NotifyPartial || (o.NotifyLastPartial && nextBackupNumber == o.PartialBackupNumber)){
-                    Notify($"Backup {o.S3Bucket}/{s3folder} created", $"Great news everyone! The backup {o.S3Bucket}/{s3folder} was successfully created", o);
+                    Notify($"Backup {o.S3Bucket}/{s3folder} created", $"{o.S3Bucket}/{s3folder} created", o);
                 }
             }
         }
