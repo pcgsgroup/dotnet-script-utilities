@@ -218,6 +218,7 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
         Log("Done");
     }
     catch(Exception exc){
+        Log(exc.ToString());
         NotifyError($"Backup {o.S3Bucket}/{o.S3Folder} failed", $"Backup {o.S3Bucket}/{o.S3Folder} creation failed with exception: {exc.ToString()}", o);
         throw;
     }
