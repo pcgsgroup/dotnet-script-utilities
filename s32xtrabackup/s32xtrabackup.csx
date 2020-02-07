@@ -22,12 +22,6 @@ public class Options
     [Option('b', "partialbackups", Required = false, Default=99, HelpText = "Number of partial backups to restore after the full backup")]
     public int PartialBackupNumber { get; set; } = 99;
 
-    [Option('u', "mysqluser", Required = false, HelpText = "MySQL User")]
-    public string MySqlUser { get; set; }
-
-    [Option('p', "mysqlpassword", Required = false, HelpText = "MySQL Password")]
-    public string MySqlPassword { get; set; }
-
     [Option('D', "mysqldatadir", Required = false, Default="/var/lib/mysql", HelpText = "MySQL Data Directory")]
     public string MySqlDataDir { get; set; } = "/var/lib/mysql";
 
@@ -207,6 +201,9 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 Bash($"service mysql start", o);
 
                 Log($"Done.");
+                if(o.NotifySuccess){
+                    Notify("Backup successfully restored", $"Backup {fullBackup} restored", o);
+                }
             }
             else{
                 //Exit

@@ -1,6 +1,6 @@
 # s32xtrabackup.csx
 
-Script to download and restore full and incremental xtrabackup backups from S3 compatible cloud storage
+Script to download and restore full and optionally a differential xtrabackup backup from S3 compatible cloud storage
 
 Requirements:
 
@@ -10,7 +10,7 @@ Requirements:
 
 Installation: 
 
-Note: The script will restore the local installation of mysql, percona or mariadb, remote servers are not supported
+Note: The script will restore the local installation of mysql, percona or mariadb. Remote servers are not supported
 
 ```bash
 wget https://raw.githubusercontent.com/rubenmch/dotnet-script-utilities/master/s32xtrabackup/s32xtrabackup.csx -O /opt/xbs3/s32xtrabackup.csx
@@ -21,8 +21,15 @@ Usage:
 
 Restore full backup
 ```bash
-/opt/xbs3/s32xtrabackup.csx --backupdirectory /var/opt/xbs3/backup --incrementalbackups 0 --mysqluser myuser --mysqlpassword mypwd --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket
+/opt/xbs3/s32xtrabackup.csx --backupdirectory /var/opt/xbs3/backup --partialbackups 0 --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket
 ```
 
-Restore full backup plus incremental backups
-Pending...
+Restore full backup plus the latest differential backup
+```bash
+/opt/xbs3/s32xtrabackup.csx --backupdirectory /var/opt/xbs3/backup --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket
+```
+
+Restore full backup plus the fifth differential backup created after the last full backup
+```bash
+/opt/xbs3/s32xtrabackup.csx --backupdirectory /var/opt/xbs3/backup --partialbackups 5 --s3accesskey mykey --s3secretkey mysecret --s3bucket bucket
+```
