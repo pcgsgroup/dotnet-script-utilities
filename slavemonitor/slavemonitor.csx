@@ -61,6 +61,9 @@ public class Options
 
     [Option("pushovertoken", Required = false, HelpText = "Pushover token to send pushover notifications")]
     public string PushoverToken { get; set; }
+
+    [Option("successwebhook", Required = false, HelpText = "Success webhook to call each time the slave is checked and everything is OK, useful for heartbeat monitors")]
+    public string SuccessWebHook { get; set; }
 }
 
 Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
@@ -112,10 +115,10 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                 Environment.Exit(2);
             }
         }
-        Log("Done.");
         if(o.NotifySuccess){
             Notify($"{host} replication ok", $"{host} replication OK", o);
         }
+        Log("Done.");
     }
     catch(Exception exc)
     {
@@ -132,6 +135,10 @@ public void Log(string message){
 public void Notify(string subject, string message, Options o){
     NotifyEmail(subject, message, o);
     NotifyPushover(message, -2, o);
+    //Notify webhook
+    if(!String.IsNullOrEmpty(o.SuccessWebHook)){
+        o.SuccessWebHook.GetAsync().Wait();
+    }
 }
 
 public void NotifyError(string subject, string message, Options o){
