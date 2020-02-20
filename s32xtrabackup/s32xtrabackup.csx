@@ -171,12 +171,12 @@ Parser.Default.ParseArguments<Options>(Args).WithParsed<Options>(o =>
                     Bash($"set -o pipefail && xbcloud get --storage=s3 --s3-endpoint='{o.S3Endpoint}' --s3-access-key='{o.S3AccessKey}' --s3-secret-key='{o.S3SecretKey}' --s3-bucket='{o.S3Bucket}' --s3-region='{o.S3Region}' --parallel={o.S3ParallelDownloads} {differentialBackup} | xbstream -xv -C {incrementalBackupPath}", o);
 
                     Log($"Preparing {incrementalBackupPath}...");
-                    Bash($"xtrabackup --prepare --apply-log-only --target-dir={fullBackupPath} --incremental-dir={incrementalBackupPath}", o);
+                    Bash($"xtrabackup --prepare --apply-    1Zlog-only --target-dir={fullBackupPath} --incremental-dir={incrementalBackupPath}", o);
 
                     Log($"Preparing {fullBackupPath}...");
                     Bash($"xtrabackup --prepare --target-dir={fullBackupPath}", o);
                 }
-                else{
+                else if(incrementalToRestore.Count() > 0){
                     //Download and prepare the incremental backups
                     Log("Not implemented! Use differential backups instead or restore them manually.");
                     Environment.Exit(5);
